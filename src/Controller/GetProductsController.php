@@ -1,11 +1,12 @@
 <?php
 
-declare(strict_types = 1);
+declare(strict_types=1);
 
 namespace Raketa\BackendTestTask\Controller;
 
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
+use Raketa\BackendTestTask\Enum\ProductCategoryType;
 use Raketa\BackendTestTask\View\ProductsView;
 
 readonly class GetProductsController
@@ -21,15 +22,13 @@ readonly class GetProductsController
 
         $rawRequest = json_decode($request->getBody()->getContents(), true);
 
-        $response->getBody()->write(
-            json_encode(
-                $this->productsVew->toArray($rawRequest['category']),
-                JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES
-            )
-        );
+        $response
+            ->withStatus(200)
+            ->setBody([
+                'status' => 'success',
+                'products' => $this->productsVew->toArray(ProductCategoryType::from($rawRequest['category']))
+            ]);
 
-        return $response
-            ->withHeader('Content-Type', 'application/json; charset=utf-8')
-            ->withStatus(200);
+        return $response;
     }
 }

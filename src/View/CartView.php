@@ -1,58 +1,47 @@
 <?php
 
-declare(strict_types = 1);
+declare(strict_types=1);
 
 namespace Raketa\BackendTestTask\View;
 
 use Raketa\BackendTestTask\Domain\Cart;
-use Raketa\BackendTestTask\Repository\ProductRepository;
+use Raketa\BackendTestTask\Domain\CartItem;
 
 readonly class CartView
 {
-    public function __construct(
-        private ProductRepository $productRepository
-    ) {
-    }
-
     public function toArray(Cart $cart): array
     {
-        $data = [
+        $customer = $cart->getCustomer();
+
+        return [
             'uuid' => $cart->getUuid(),
             'customer' => [
-                'id' => $cart->getCustomer()->getId(),
+                'id' => $customer->getId(),
                 'name' => implode(' ', [
-                    $cart->getCustomer()->getLastName(),
-                    $cart->getCustomer()->getFirstName(),
-                    $cart->getCustomer()->getMiddleName(),
+                    $customer->getLastName(),
+                    $customer->getFirstName(),
+                    $customer->getMiddleName(),
                 ]),
-                'email' => $cart->getCustomer()->getEmail(),
+                'email' => $customer->getEmail(),
             ],
             'payment_method' => $cart->getPaymentMethod(),
+            'items' => array_map(function (CartItem $cartItem): array {
+                $product = $cartItem->getProduct();
+
+                return [
+                    'uuid' => $cartItem->getUuid(),
+                    'total' => $cartItem->getTotal(),
+                    'quantity' => $cartItem->getQuantity(),
+                    'product' => [
+                        'id' => $product->getId(),
+                        'uuid' => $product->getUuid(),
+                        'name' => $product->getName(),
+                        'thumbnail' => $product->getThumbnail(),
+                        'price' => $product->getPrice(),
+                    ],
+                ];
+            }, $cart->getItems()),
+            'total' => $cart->getTotal(),
         ];
-
-        $total = 0;
-        $data['items'] = [];
-        foreach ($cart->getItems() as $item) {
-            $total += $item->getPrice() * $item->getQuantity();
-            $product = $this->productRepository->getByUuid($item->getProductUuid());
-
-            $data['items'][] = [
-                'uuid' => $item->getUuid(),
-                'price' => $item->getPrice(),
-                'total' => $total,
-                'quantity' => $item->getQuantity(),
-                'product' => [
-                    'id' => $product->getId(),
-                    'uuid' => $product->getUuid(),
-                    'name' => $product->getName(),
-                    'thumbnail' => $product->getThumbnail(),
-                    'price' => $product->getPrice(),
-                ],
-            ];
-        }
-
-        $data['total'] = $total;
-
-        return $data;
     }
 }

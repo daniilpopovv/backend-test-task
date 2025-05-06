@@ -1,9 +1,12 @@
 <?php
 
-declare(strict_types = 1);
+declare(strict_types=1);
 
 namespace Raketa\BackendTestTask\Domain;
 
+/**
+ * @property array<CartItem> $items
+ */
 final class Cart
 {
     public function __construct(
@@ -29,6 +32,9 @@ final class Cart
         return $this->paymentMethod;
     }
 
+    /**
+     * @return array<CartItem>
+     */
     public function getItems(): array
     {
         return $this->items;
@@ -37,5 +43,14 @@ final class Cart
     public function addItem(CartItem $item): void
     {
         $this->items[] = $item;
+    }
+
+    public function getTotal(): float
+    {
+        return array_reduce(
+            $this->getItems(),
+            fn(float $carry, CartItem $cartItem): float => $carry + $cartItem->getTotal(),
+            0
+        );
     }
 }

@@ -1,10 +1,9 @@
 <?php
 
-declare(strict_types = 1);
+declare(strict_types=1);
 
 namespace Raketa\BackendTestTask\Controller;
 
-use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
 use Raketa\BackendTestTask\Repository\CartManager;
 use Raketa\BackendTestTask\View\CartView;
@@ -12,38 +11,39 @@ use Raketa\BackendTestTask\View\CartView;
 readonly class GetCartController
 {
     public function __construct(
-        public CartView $cartView,
-        public CartManager $cartManager
+        private CartView $cartView,
+        private CartManager $cartManager
     ) {
     }
 
-    public function get(RequestInterface $request): ResponseInterface
+    public function get(): ResponseInterface
     {
         $response = new JsonResponse();
-        $cart = $this->cartManager->getCart();
+        $sessionId = session_id();
 
-        if (! $cart) {
-            $response->getBody()->write(
-                json_encode(
-                    ['message' => 'Cart not found'],
-                    JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES
-                )
-            );
+        if (!$sessionId) {
+            $response
+                ->withStatus(403)
+                ->setBody(['message' => 'Authorization error']);
 
-            return $response
-                ->withHeader('Content-Type', 'application/json; charset=utf-8')
-                ->withStatus(404);
-        } else {
-            $response->getBody()->write(
-                json_encode(
-                    $this->cartView->toArray($cart),
-                    JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES
-                )
-            );
+            return $response;
         }
 
-        return $response
-            ->withHeader('Content-Type', 'application/json; charset=utf-8')
-            ->withStatus(404);
+        $cart = $this->cartManager->getCart($sessionId);
+
+        if (!$cart) {
+            $response
+                ->withStatus(404)
+                ->setBody(['status' => 'error', 'message' => 'Cart not found']);
+        } else {
+            $response
+                ->withStatus(200)
+                ->setBody([
+                    'status' => 'success',
+                    'cart' => $this->cartView->toArray($cart)
+                ]);
+        }
+
+        return $response;
     }
 }

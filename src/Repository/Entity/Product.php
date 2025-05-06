@@ -1,8 +1,10 @@
 <?php
 
-declare(strict_types = 1);
+declare(strict_types=1);
 
 namespace Raketa\BackendTestTask\Repository\Entity;
+
+use Raketa\BackendTestTask\Enum\ProductCategoryType;
 
 readonly class Product
 {
@@ -10,7 +12,7 @@ readonly class Product
         private int $id,
         private string $uuid,
         private bool $isActive,
-        private string $category,
+        private ProductCategoryType $category,
         private string $name,
         private string $description,
         private string $thumbnail,
@@ -33,7 +35,7 @@ readonly class Product
         return $this->isActive;
     }
 
-    public function getCategory(): string
+    public function getCategory(): ProductCategoryType
     {
         return $this->category;
     }

@@ -1,52 +1,37 @@
 <?php
 
-declare(strict_types = 1);
+declare(strict_types=1);
 
 namespace Raketa\BackendTestTask\Repository;
 
-use Exception;
 use Psr\Log\LoggerInterface;
 use Raketa\BackendTestTask\Domain\Cart;
-use Raketa\BackendTestTask\Infrastructure\ConnectorFacade;
+use Raketa\BackendTestTask\Infrastructure\RedisConnectorFacade;
+use Throwable;
 
-class CartManager extends ConnectorFacade
+readonly class CartManager extends RedisConnectorFacade
 {
-    public $logger;
+    private const DB_INDEX = 1;
 
-    public function __construct($host, $port, $password)
+    public function __construct(string $host, int $port, ?string $password, LoggerInterface $logger)
     {
-        parent::__construct($host, $port, $password, 1);
-        parent::build();
-    }
-
-    public function setLogger(LoggerInterface $logger)
-    {
-        $this->logger = $logger;
+        parent::__construct($host, $port, $password, self::DB_INDEX, $logger);
     }
 
     /**
-     * @inheritdoc
+     * @throws Throwable
      */
-    public function saveCart(Cart $cart)
+    public function saveCart(Cart $cart, string $sessionId): void
     {
-        try {
-            $this->connector->set($cart, session_id());
-        } catch (Exception $e) {
-            $this->logger->error('Error');
-        }
+        $this->redisConnector->set($sessionId, $cart);
     }
 
-    /**
-     * @return ?Cart
-     */
-    public function getCart()
+    public function getCart(string $sessionId): ?Cart
     {
         try {
-            return $this->connector->get(session_id());
-        } catch (Exception $e) {
-            $this->logger->error('Error');
+            return $this->redisConnector->get($sessionId);
+        } catch (Throwable) {
+            return null;
         }
-
-        return new Cart(session_id(), []);
     }
 }

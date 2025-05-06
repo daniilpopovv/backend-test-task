@@ -1,42 +1,67 @@
 <?php
 
-declare(strict_types = 1);
+declare(strict_types=1);
 
 namespace Raketa\BackendTestTask\Repository;
 
 use Doctrine\DBAL\Connection;
+use Exception;
+use Psr\Log\LoggerInterface;
+use Raketa\BackendTestTask\Enum\ProductCategoryType;
 use Raketa\BackendTestTask\Repository\Entity\Product;
 
-class ProductRepository
+readonly class ProductRepository
 {
-    private Connection $connection;
-
-    public function __construct(Connection $connection)
+    public function __construct(private Connection $connection, private LoggerInterface $logger)
     {
-        $this->connection = $connection;
     }
 
-    public function getByUuid(string $uuid): Product
-    {
-        $row = $this->connection->fetchOne(
-            "SELECT * FROM products WHERE uuid = " . $uuid,
-        );
 
-        if (empty($row)) {
-            throw new Exception('Product not found');
+    public function getByUuid(string $uuid): ?Product
+    {
+        try {
+            $row = $this->connection->fetchAssociative(
+                "SELECT * FROM products WHERE uuid = ?",
+                [$uuid]
+            );
+        } catch (Exception $exception) {
+            $this->logger->error($exception->getMessage(), [
+                'exception' => $exception::class,
+                'message' => $exception->getMessage(),
+                'code' => $exception->getCode(),
+                'trace' => $exception->getTrace(),
+            ]);
+
+            return null;
+        }
+
+        if (!$row) {
+            return null;
         }
 
         return $this->make($row);
     }
 
-    public function getByCategory(string $category): array
+    public function getByCategory(ProductCategoryType $category): array
     {
-        return array_map(
-            static fn (array $row): Product => $this->make($row),
-            $this->connection->fetchAllAssociative(
-                "SELECT id FROM products WHERE is_active = 1 AND category = " . $category,
-            )
-        );
+        try {
+            return array_map(
+                fn(array $row): Product => $this->make($row),
+                $this->connection->fetchAllAssociative(
+                    "SELECT id FROM products WHERE is_active = 1 AND category = ?",
+                    [$category->value]
+                )
+            );
+        } catch (Exception $exception) {
+            $this->logger->error($exception->getMessage(), [
+                'exception' => $exception::class,
+                'message' => $exception->getMessage(),
+                'code' => $exception->getCode(),
+                'trace' => $exception->getTrace(),
+            ]);
+
+            return [];
+        }
     }
 
     public function make(array $row): Product
@@ -45,7 +70,7 @@ class ProductRepository
             $row['id'],
             $row['uuid'],
             $row['is_active'],
-            $row['category'],
+            ProductCategoryType::from($row['category']),
             $row['name'],
             $row['description'],
             $row['thumbnail'],

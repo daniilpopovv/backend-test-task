@@ -1,16 +1,30 @@
 <?php
 
-declare(strict_types = 1);
+declare(strict_types=1);
 
 namespace Raketa\BackendTestTask\Infrastructure;
 
-class ConnectorException implements \Throwable
+use Throwable;
+
+readonly class ConnectorException implements Throwable
 {
+    protected string $file;
+
+    protected int $line;
+
+    protected array $trace;
+
     public function __construct(
-        private string $message,
-        private int $code,
-        private ?\Throwable $previous,
-    ) { }
+        protected string $message,
+        protected int $code,
+        protected ?Throwable $previous,
+    ) {
+        $backtrace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 1);
+
+        $this->file = $backtrace[0]['file'];
+        $this->line = $backtrace[0]['line'];
+        $this->trace = debug_backtrace();
+    }
 
     public function getMessage(): string
     {
@@ -24,25 +38,33 @@ class ConnectorException implements \Throwable
 
     public function getFile(): string
     {
-        return $this->previous->getFile();
+        return $this->file;
     }
 
     public function getLine(): int
     {
-        return $this->previous->getLine();
+        return $this->line;
     }
 
     public function getTrace(): array
     {
-        return $this->previous->getTrace();
+        return $this->trace;
     }
 
     public function getTraceAsString(): string
     {
-        return $this->previous->getTraceAsString();
+        $traceString = '';
+        foreach ($this->trace as $key => $frame) {
+            $traceString .= "#$key {$frame['file']}({$frame['line']}): ";
+            if (isset($frame['class'])) {
+                $traceString .= "{$frame['class']}{$frame['type']}";
+            }
+            $traceString .= "{$frame['function']}()\n";
+        }
+        return $traceString;
     }
 
-    public function getPrevious(): ?\Throwable
+    public function getPrevious(): ?Throwable
     {
         return $this->previous;
     }
